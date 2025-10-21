@@ -77,7 +77,7 @@ class WordleGame:
             self.game_over = True
             self.won = True
             print("You won!")
-        elif self.current_guess == 5:  # Last guess
+        elif self.current_guess == 5:  # Last guess (6 attempts: 0-5)
             self.game_over = True
             self.won = False
             print(f"Game over! The word was: {self.target_word}")
@@ -88,27 +88,33 @@ class WordleGame:
         return True
     
     def _evaluate_guess(self, guess):
-        """Evaluate the guess and set letter states"""
+        """Evaluate the guess and set letter states according to Wordle rules"""
         target_letters = list(self.target_word)
         guess_letters = list(guess)
+        result = [LetterState.ABSENT] * 5
         
-        # First pass: mark correct letters
+        # First pass: mark correct letters (green)
         for i in range(5):
             if guess_letters[i] == target_letters[i]:
-                self.letter_states[self.current_guess][i] = LetterState.CORRECT
+                result[i] = LetterState.CORRECT
                 target_letters[i] = None  # Mark as used
         
-        # Second pass: mark present and absent letters
+        # Second pass: mark present letters (yellow)
         for i in range(5):
-            if self.letter_states[self.current_guess][i] == LetterState.CORRECT:
-                continue
+            if result[i] == LetterState.CORRECT:
+                continue  # Skip already correct letters
             
             if guess_letters[i] in target_letters:
-                self.letter_states[self.current_guess][i] = LetterState.PRESENT
-                # Remove the first occurrence
-                target_letters[target_letters.index(guess_letters[i])] = None
-            else:
-                self.letter_states[self.current_guess][i] = LetterState.ABSENT
+                # Find the first occurrence in target that hasn't been used
+                for j in range(5):
+                    if target_letters[j] == guess_letters[i]:
+                        result[i] = LetterState.PRESENT
+                        target_letters[j] = None  # Mark as used
+                        break
+        
+        # Update the letter states for the current guess
+        for i in range(5):
+            self.letter_states[self.current_guess][i] = result[i]
     
     def get_keyboard_state(self):
         """Get the state of each letter on the keyboard"""

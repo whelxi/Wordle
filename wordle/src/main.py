@@ -35,9 +35,9 @@ class WordleApp:
         self.settings = Settings()
         self.audio = AudioManager(self.assets, self.settings)
         
-        # Set up display
-        self.screen_width = 500
-        self.screen_height = 700
+        # Set up larger display
+        self.screen_width = 800
+        self.screen_height = 900
         self.screen = pygame.display.set_mode((self.screen_width, self.screen_height))
         pygame.display.set_caption("Wordle Game")
         
@@ -97,7 +97,7 @@ class WordleApp:
                     self.audio.play_sound('success')
                     self.ui.show_message("Congratulations! You won!")
                 else:
-                    self.ui.show_message(f"Game Over! Word was: {self.game.target_word}")
+                    self.ui.show_message(f"Game Over! The word was: {self.game.target_word}")
                 
                 # Update statistics
                 self.settings.update_game_stats(self.game.won)
