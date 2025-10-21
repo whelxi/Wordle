@@ -66,6 +66,7 @@ class WordleGame:
         
         # Validate guess is in word list
         if guess not in self.assets.word_list:
+            print(f"Word '{guess}' not in word list!")
             return False
         
         # Evaluate the guess
@@ -75,9 +76,11 @@ class WordleGame:
         if guess == self.target_word:
             self.game_over = True
             self.won = True
+            print("You won!")
         elif self.current_guess == 5:  # Last guess
             self.game_over = True
             self.won = False
+            print(f"Game over! The word was: {self.target_word}")
         else:
             self.current_guess += 1
             self.current_letter = 0
@@ -134,3 +137,7 @@ class WordleGame:
         return (not self.game_over and 
                 self.current_guess < 6 and 
                 len(self.guesses[self.current_guess]) == 5)
+    
+    def is_valid_word(self, word):
+        """Check if a word is in the valid word list"""
+        return word.upper() in self.assets.word_list

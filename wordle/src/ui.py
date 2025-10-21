@@ -2,8 +2,8 @@ import pygame
 import pygame_gui
 from pygame_gui.elements import UIButton, UILabel
 
-# Import from our game module
-from .game import LetterState
+# Use absolute import instead of relative
+from game import LetterState
 
 class WordleUI:
     def __init__(self, assets_manager, settings, audio_manager):
@@ -38,6 +38,11 @@ class WordleUI:
         self.manager = None
         self.restart_button = None
         self.message_label = None
+        
+        # Store keyboard button positions for click detection
+        self.key_rects = {}
+        self.enter_rect = None
+        self.backspace_rect = None
     
     def setup_ui(self, screen_width, screen_height):
         """Setup the pygame_gui manager and elements"""
@@ -149,6 +154,9 @@ class WordleUI:
         
         start_y = 500
         
+        # Clear previous key positions
+        self.key_rects.clear()
+        
         for row_idx, row in enumerate(self.keyboard_rows):
             row_width = len(row) * (key_width + key_margin) - key_margin
             start_x = (screen.get_width() - row_width) // 2
@@ -172,6 +180,9 @@ class WordleUI:
                 key_rect = pygame.Rect(x, y, key_width, key_height)
                 pygame.draw.rect(screen, color, key_rect, border_radius=4)
                 
+                # Store key position for click detection
+                self.key_rects[key] = key_rect
+                
                 # Draw key letter
                 text_surface = self.assets.fonts['small'].render(key, True, self.colors['text'])
                 text_rect = text_surface.get_rect(center=(x + key_width // 2, y + key_height // 2))
@@ -188,6 +199,7 @@ class WordleUI:
         enter_text = self.assets.fonts['small'].render("ENTER", True, self.colors['text'])
         enter_text_rect = enter_text.get_rect(center=enter_rect.center)
         screen.blit(enter_text, enter_text_rect)
+        self.enter_rect = enter_rect
         
         # Backspace key
         backspace_rect = pygame.Rect(backspace_x, last_row_y, key_width * 1.375, key_height)
@@ -195,6 +207,7 @@ class WordleUI:
         backspace_text = self.assets.fonts['small'].render("DEL", True, self.colors['text'])
         backspace_text_rect = backspace_text.get_rect(center=backspace_rect.center)
         screen.blit(backspace_text, backspace_text_rect)
+        self.backspace_rect = backspace_rect
     
     def _draw_stats(self, screen):
         """Draw game statistics"""
@@ -226,5 +239,26 @@ class WordleUI:
                 if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
                     if event.ui_element == self.restart_button:
                         return "restart"
+        
+        # Handle mouse clicks on virtual keyboard
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:  # Left click
+            return self._handle_mouse_click(event.pos)
+        
+        return None
+    
+    def _handle_mouse_click(self, mouse_pos):
+        """Handle mouse clicks on the virtual keyboard"""
+        # Check letter keys
+        for key, rect in self.key_rects.items():
+            if rect.collidepoint(mouse_pos):
+                return f"key_{key}"
+        
+        # Check Enter key
+        if self.enter_rect and self.enter_rect.collidepoint(mouse_pos):
+            return "enter"
+        
+        # Check Backspace key
+        if self.backspace_rect and self.backspace_rect.collidepoint(mouse_pos):
+            return "backspace"
         
         return None

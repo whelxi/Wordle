@@ -2,8 +2,9 @@ import unittest
 import sys
 import os
 
-# Add the parent directory to Python path to import from src
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+# Add the project root to Python path
+project_root = os.path.join(os.path.dirname(__file__), '..')
+sys.path.insert(0, project_root)
 
 from src.game import WordleGame, LetterState
 from src.assets_manager import AssetsManager
