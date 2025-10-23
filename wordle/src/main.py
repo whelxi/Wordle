@@ -2,9 +2,7 @@ import pygame
 import random
 import sys
 import os
-import urllib.request # <-- NEW IMPORT
-
-# --- NEW: First-Time Setup Logic ---
+import urllib.request 
 
 # Define file paths and URLs
 try:
@@ -69,13 +67,10 @@ def check_and_download_data():
 # Run the check before anything else
 check_and_download_data()
 
-# --- END: First-Time Setup Logic ---
-
-
 # Initialize pygame
 pygame.init()
 
-# --- NEW: Initialize Mixer ---
+# --- Initialize Mixer ---
 try:
     pygame.mixer.init()
     mixer_initialized = True
@@ -133,7 +128,7 @@ WORD_LIST_FILE = os.path.join(DATA_DIR, 'word_list_5.txt')
 # Load the words
 WORDS = load_words(WORD_LIST_FILE)
 
-# --- NEW: Load Keypress Sound ---
+# --- Load Keypress Sound ---
 keypress_sound = None
 if mixer_initialized:
     try:
@@ -149,7 +144,7 @@ if mixer_initialized:
             print(f"Warning: Sound file not found. Sound will be disabled.", file=sys.stderr)
 
 
-# --- NEW: Load Enter Sound (as requested) ---
+# ---  Load Enter Sound (as requested) ---
 enter_sound = None
 if mixer_initialized:
     try:
@@ -286,7 +281,7 @@ def draw_keyboard(current_screen_width, current_screen_height):
             # Determine key width
             key_width = special_key_width if key in ["ENTER", "DEL"] else key_size_x
             
-            # --- NEW: Define key_rect here ---
+            # ---  Define key_rect here ---
             key_rect = pygame.Rect(x, y, key_width, key_height)
             
             # Determine key color
@@ -294,7 +289,7 @@ def draw_keyboard(current_screen_width, current_screen_height):
             if key in keyboard_colors:
                 color = keyboard_colors[key]
 
-            # --- NEW: Creative drawing logic for split colors ---
+            # ---  Creative drawing logic for split colors ---
             if isinstance(color, tuple) and color == (GREEN, YELLOW):
                 # Split key design
                 left_width = key_rect.width // 2
@@ -516,7 +511,7 @@ def handle_key_press(key):
         grid[current_row][current_col] = key
         current_col += 1
         message = ""
-        # --- NEW: Play sound on successful letter press ---
+        # ---  Play sound on successful letter press ---
         if keypress_sound:
             keypress_sound.play()
     # Check for Backspace (physical) or DEL (on-screen)
@@ -524,12 +519,12 @@ def handle_key_press(key):
         current_col -= 1
         grid[current_row][current_col] = ""
         message = ""
-        # --- NEW: Play sound on successful delete ---
+        # ---  Play sound on successful delete ---
         if keypress_sound:
             keypress_sound.play()
     # Check for Return (physical) or ENTER (on-screen)
     elif key == "RETURN" or key == "ENTER":
-        # --- NEW: Play Enter sound as requested ---
+        # ---  Play Enter sound as requested ---
         if enter_sound:
             enter_sound.play()
         check_guess()
