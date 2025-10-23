@@ -231,19 +231,37 @@ def draw_keyboard(current_screen_width, current_screen_height):
             # Determine key width
             key_width = special_key_width if key in ["ENTER", "DEL"] else key_size_x
             
+            # --- NEW: Define key_rect here ---
+            key_rect = pygame.Rect(x, y, key_width, key_height)
+            
             # Determine key color
             color = LIGHT_GRAY
             if key in keyboard_colors:
                 color = keyboard_colors[key]
 
-            # Draw key background (with rounded corners)
-            pygame.draw.rect(screen, color, (x, y, key_width, key_height), border_radius=5)
-            # Draw key border (not needed if using filled rect)
-            # pygame.draw.rect(screen, GRAY, (x, y, key_width, key_height), 2, border_radius=5) 
+            # --- NEW: Creative drawing logic for split colors ---
+            if isinstance(color, tuple) and color == (GREEN, YELLOW):
+                # Split key design
+                left_width = key_rect.width // 2
+                right_width = key_rect.width - left_width # Handle odd widths
+                
+                left_half_rect = pygame.Rect(key_rect.left, key_rect.top, left_width, key_rect.height)
+                right_half_rect = pygame.Rect(key_rect.left + left_width, key_rect.top, right_width, key_rect.height)
+                
+                # Draw left half (GREEN)
+                pygame.draw.rect(screen, GREEN, left_half_rect, 
+                                 border_top_left_radius=5, border_bottom_left_radius=5)
+                # Draw right half (YELLOW)
+                pygame.draw.rect(screen, YELLOW, right_half_rect, 
+                                 border_top_right_radius=5, border_bottom_right_radius=5)
+            else:
+                # Draw key background (with rounded corners) - normal single color
+                pygame.draw.rect(screen, color, key_rect, border_radius=5)
+            # --- END NEW LOGIC ---
             
             # Draw letter
             text = small_font.render(key, True, BLACK)
-            text_rect = text.get_rect(center=(x + key_width // 2, y + key_height // 2))
+            text_rect = text.get_rect(center=key_rect.center) # Use key_rect.center
             screen.blit(text, text_rect)
             
             # Move x for the next key in the row
@@ -358,7 +376,7 @@ def check_guess():
         message = "Not in word list"
         return
     
-    # --- Check logic (unchanged) ---
+    # --- Check logic (Grid coloring) ---
     target_letters = list(target_word)
     guess_letters = list(guess)
     
@@ -366,22 +384,45 @@ def check_guess():
     for i in range(GRID_SIZE):
         if guess_letters[i] == target_letters[i]:
             colors[current_row][i] = GREEN
-            keyboard_colors[guess_letters[i]] = GREEN
+            
+            # --- NEW KEYBOARD LOGIC (GREEN) ---
+            letter = guess_letters[i]
+            # Upgrade to split-color if it was yellow
+            if keyboard_colors[letter] == YELLOW:
+                keyboard_colors[letter] = (GREEN, YELLOW) 
+            # Otherwise, set to green (overwrites gray or green)
+            else:
+                keyboard_colors[letter] = GREEN
+            # --- END NEW LOGIC ---
+            
             target_letters[i] = None  # Mark as used
     
     # Second pass: mark present but wrong position letters (yellow)
     for i in range(GRID_SIZE):
         if colors[current_row][i] != GREEN:  # If not already green
-            if guess_letters[i] in target_letters:
+            letter = guess_letters[i]
+            if letter in target_letters:
                 colors[current_row][i] = YELLOW
-                if keyboard_colors[guess_letters[i]] != GREEN:  # Don't override green
-                    keyboard_colors[guess_letters[i]] = YELLOW
+                
+                # --- NEW KEYBOARD LOGIC (YELLOW) ---
+                # Upgrade to split-color if it was green
+                if keyboard_colors[letter] == GREEN:
+                    keyboard_colors[letter] = (GREEN, YELLOW)
+                # Only set to yellow if it's currently gray
+                elif keyboard_colors[letter] == LIGHT_GRAY or keyboard_colors[letter] == DARK_GRAY:
+                    keyboard_colors[letter] = YELLOW
+                # --- END NEW LOGIC ---
+                
                 # Remove the first occurrence of this letter from target
-                target_letters[target_letters.index(guess_letters[i])] = None
+                target_letters[target_letters.index(letter)] = None
             else:
                 colors[current_row][i] = DARK_GRAY
-                if keyboard_colors[guess_letters[i]] not in [GREEN, YELLOW]:
-                    keyboard_colors[guess_letters[i]] = DARK_GRAY
+                
+                # --- NEW KEYBOARD LOGIC (GRAY) ---
+                # Only set to dark gray if it's light gray
+                if keyboard_colors[letter] == LIGHT_GRAY:
+                    keyboard_colors[letter] = DARK_GRAY
+                # --- END NEW LOGIC ---
     # --- End of check logic ---
 
     
