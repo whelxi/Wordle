@@ -12,9 +12,7 @@ GRID_SIZE = 5
 GRID_ROWS = 6
 CELL_SIZE = 60
 CELL_MARGIN = 10
-# GRID_OFFSET_X removed - will be calculated dynamically
 GRID_OFFSET_Y = 110 # Pushed grid down
-# KEYBOARD_OFFSET_Y removed - will be calculated dynamically
 
 # Colors
 WHITE = (255, 255, 255)
@@ -25,7 +23,6 @@ GREEN = (106, 170, 100)
 YELLOW = (201, 180, 88)
 DARK_GRAY = (58, 58, 60)
 
-# Word list (simplified for this example)
 # --- Load word list from file ---
 def load_words(filepath):
     """Loads and processes the word list from a file."""
@@ -72,6 +69,13 @@ screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.RESIZABLE
 pygame.display.set_caption("Wordle")
 font = pygame.font.SysFont('Arial', 36)
 small_font = pygame.font.SysFont('Arial', 24)
+button_font = pygame.font.SysFont('Arial', 28, bold=True)
+toggle_font = pygame.font.SysFont('Arial', 18)
+
+
+# --- NEW ---
+# Custom event for endless mode reset
+RESET_GAME_EVENT = pygame.USEREVENT + 1
 
 # Game state
 target_word = random.choice(WORDS)
@@ -84,6 +88,16 @@ game_over = False
 message = ""
 fullscreen = False
 
+# --- NEW ---
+# State for new UI elements
+endless_mode = False
+show_end_game_buttons = False
+# We will define these rects in the draw functions so they are dynamic
+continue_button_rect = pygame.Rect(0, 0, 0, 0)
+exit_button_rect = pygame.Rect(0, 0, 0, 0)
+endless_toggle_rect = pygame.Rect(0, 0, 0, 0)
+endless_toggle_text_rect = pygame.Rect(0, 0, 0, 0)
+
 # Keyboard layout (as a list of lists for easier processing)
 keyboard_rows = [
     ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
@@ -91,7 +105,27 @@ keyboard_rows = [
     ['ENTER', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', 'DEL']
 ]
 
-# --- MODIFIED FUNCTION ---
+# --- NEW FUNCTION ---
+def reset_game():
+    """Resets the game state for a new round."""
+    global target_word, current_row, current_col, grid, colors, keyboard_colors
+    global game_over, message, show_end_game_buttons
+    
+    # Stop any pending reset timers
+    pygame.time.set_timer(RESET_GAME_EVENT, 0)
+    
+    target_word = random.choice(WORDS)
+    current_row = 0
+    current_col = 0
+    grid = [["" for _ in range(GRID_SIZE)] for _ in range(GRID_ROWS)]
+    colors = [[LIGHT_GRAY for _ in range(GRID_SIZE)] for _ in range(GRID_ROWS)]
+    # Reset keyboard colors for a fresh start
+    keyboard_colors = {letter: LIGHT_GRAY for letter in "QWERTYUIOPASDFGHJKLZXCVBNM"}
+    game_over = False
+    message = ""
+    show_end_game_buttons = False
+
+
 def draw_grid(current_screen_width):
     # Calculate the dynamic horizontal offset to center the grid
     grid_total_width = (CELL_SIZE + CELL_MARGIN) * GRID_SIZE - CELL_MARGIN
@@ -117,6 +151,10 @@ def draw_grid(current_screen_width):
 
 # --- MODIFIED FUNCTION ---
 def draw_keyboard(current_screen_width, current_screen_height):
+    # Do not draw the keyboard if the end-game buttons are showing
+    if show_end_game_buttons:
+        return
+        
     # Define sizes specifically for the keyboard
     key_height = 50
     key_margin = 6
@@ -124,7 +162,7 @@ def draw_keyboard(current_screen_width, current_screen_height):
     special_key_width = 65 # Width for ENTER and DEL
 
     # Calculate dynamic Y offset to position keyboard near the bottom
-    keyboard_offset_y = current_screen_height - (key_height + key_margin) * 3 - 20 # 20px padding from bottom
+    keyboard_offset_y = current_screen_height - (key_height + key_margin) * 3 - 60 # Adjusted padding
 
     for row_idx, row in enumerate(keyboard_rows):
         # Calculate the total width of the current row
@@ -150,10 +188,10 @@ def draw_keyboard(current_screen_width, current_screen_height):
             if key in keyboard_colors:
                 color = keyboard_colors[key]
 
-            # Draw key background
-            pygame.draw.rect(screen, color, (x, y, key_width, key_height))
-            # Draw key border
-            pygame.draw.rect(screen, GRAY, (x, y, key_width, key_height), 2)
+            # Draw key background (with rounded corners)
+            pygame.draw.rect(screen, color, (x, y, key_width, key_height), border_radius=5)
+            # Draw key border (not needed if using filled rect)
+            # pygame.draw.rect(screen, GRAY, (x, y, key_width, key_height), 2, border_radius=5) 
             
             # Draw letter
             text = small_font.render(key, True, BLACK)
@@ -163,7 +201,6 @@ def draw_keyboard(current_screen_width, current_screen_height):
             # Move x for the next key in the row
             x += key_width + key_margin
 
-# --- MODIFIED FUNCTION ---
 def draw_message(current_screen_width):
     if message:
         text = small_font.render(message, True, BLACK)
@@ -171,7 +208,6 @@ def draw_message(current_screen_width):
         text_rect = text.get_rect(center=(current_screen_width // 2, 80)) # Changed Y position
         screen.blit(text, text_rect)
 
-# --- MODIFIED FUNCTION ---
 def draw_title(current_screen_width):
     title_font = pygame.font.SysFont('Arial', 40, bold=True)
     title = title_font.render("WORDLE", True, BLACK)
@@ -179,8 +215,88 @@ def draw_title(current_screen_width):
     title_rect = title.get_rect(center=(current_screen_width // 2, 40))
     screen.blit(title, title_rect)
 
+
+# --- NEW FUNCTION ---
+def draw_end_game_buttons(current_screen_width, current_screen_height):
+    """Draws the Continue and Exit buttons if the game is over and not in endless mode."""
+    global continue_button_rect, exit_button_rect
+    
+    if not show_end_game_buttons:
+        return
+
+    button_width = 150
+    button_height = 50
+    button_margin = 20
+    
+    # Calculate Y position (e.g., below the grid)
+    # Use the grid's bottom edge as a reference
+    grid_bottom_y = GRID_OFFSET_Y + (CELL_SIZE + CELL_MARGIN) * GRID_ROWS
+    button_y = grid_bottom_y + 40 # 40px padding below grid
+    
+    # Calculate X positions to center them
+    total_width = button_width * 2 + button_margin
+    start_x = (current_screen_width - total_width) // 2
+    
+    # Continue Button
+    continue_x = start_x
+    continue_button_rect = pygame.Rect(continue_x, button_y, button_width, button_height)
+    pygame.draw.rect(screen, GREEN, continue_button_rect, border_radius=8)
+    text = button_font.render("Continue", True, WHITE)
+    text_rect = text.get_rect(center=continue_button_rect.center)
+    screen.blit(text, text_rect)
+
+    # Exit Button
+    exit_x = start_x + button_width + button_margin
+    exit_button_rect = pygame.Rect(exit_x, button_y, button_width, button_height)
+    pygame.draw.rect(screen, DARK_GRAY, exit_button_rect, border_radius=8)
+    text = button_font.render("Exit", True, WHITE)
+    text_rect = text.get_rect(center=exit_button_rect.center)
+    screen.blit(text, text_rect)
+
+# --- NEW FUNCTION ---
+def draw_endless_mode_toggle(current_screen_width, current_screen_height):
+    """Draws the 'Endless Mode' checkbox at the bottom."""
+    global endless_toggle_rect, endless_toggle_text_rect
+    
+    box_size = 20
+    text_padding = 10
+    
+    # Position at the bottom-center
+    y = current_screen_height - 30 # 30px from bottom
+    
+    # Render text to get its width
+    text = toggle_font.render("Endless Mode", True, BLACK)
+    text_width = text.get_width()
+    
+    total_width = box_size + text_padding + text_width
+    start_x = (current_screen_width - total_width) // 2
+    
+    # Checkbox Rect
+    box_x = start_x
+    endless_toggle_rect = pygame.Rect(box_x, y - box_size // 2, box_size, box_size)
+    
+    # Text Rect
+    text_x = box_x + box_size + text_padding
+    endless_toggle_text_rect = text.get_rect(centery=y)
+    endless_toggle_text_rect.left = text_x
+    
+    # Draw the text
+    screen.blit(text, endless_toggle_text_rect)
+    
+    # Draw the box
+    pygame.draw.rect(screen, BLACK, endless_toggle_rect, 2) # Border
+    if endless_mode:
+        # Draw a tick (simple lines)
+        p1 = (endless_toggle_rect.left + 3, endless_toggle_rect.centery)
+        p2 = (endless_toggle_rect.centerx - 2, endless_toggle_rect.bottom - 4)
+        p3 = (endless_toggle_rect.right - 4, endless_toggle_rect.top + 4)
+        pygame.draw.line(screen, GREEN, p1, p2, 3)
+        pygame.draw.line(screen, GREEN, p2, p3, 3)
+
+
+# --- MODIFIED FUNCTION ---
 def check_guess():
-    global current_row, current_col, game_over, message
+    global current_row, current_col, game_over, message, show_end_game_buttons
     
     # Check if the current row is complete
     if current_col != GRID_SIZE:
@@ -194,7 +310,7 @@ def check_guess():
         message = "Not in word list"
         return
     
-    # Check each letter in the guess
+    # --- Check logic (unchanged) ---
     target_letters = list(target_word)
     guess_letters = list(guess)
     
@@ -218,15 +334,28 @@ def check_guess():
                 colors[current_row][i] = DARK_GRAY
                 if keyboard_colors[guess_letters[i]] not in [GREEN, YELLOW]:
                     keyboard_colors[guess_letters[i]] = DARK_GRAY
+    # --- End of check logic ---
+
     
-    # Check for win or loss
-    if guess == target_word:
-        message = "You Win!"
+    # --- MODIFIED End-game logic ---
+    is_win = (guess == target_word)
+    is_loss = (current_row == GRID_ROWS - 1)
+
+    if is_win or is_loss:
         game_over = True
-    elif current_row == GRID_ROWS - 1:
-        message = f"Game Over! The word was: {target_word}"
-        game_over = True
+        if is_win:
+            message = "You Win!"
+        else: # is_loss
+            message = f"Game Over! Word: {target_word}"
+        
+        if endless_mode:
+            # If in endless mode, set a timer to auto-reset
+            pygame.time.set_timer(RESET_GAME_EVENT, 2000) # 2-second delay
+        else:
+            # Otherwise, show the continue/exit buttons
+            show_end_game_buttons = True
     else:
+        # Not game over, move to next row
         current_row += 1
         current_col = 0
         message = ""
@@ -234,6 +363,7 @@ def check_guess():
 def handle_key_press(key):
     global current_row, current_col, message
     
+    # Don't allow key presses if game is over (buttons or timer active)
     if game_over:
         return
     
@@ -252,6 +382,10 @@ def handle_key_press(key):
         check_guess()
 
 def get_keyboard_key(pos, current_screen_width, current_screen_height):
+    # Don't check keyboard if buttons are showing
+    if show_end_game_buttons:
+        return None
+        
     # Use the same dimensions as in draw_keyboard
     key_height = 50
     key_margin = 6
@@ -259,7 +393,7 @@ def get_keyboard_key(pos, current_screen_width, current_screen_height):
     special_key_width = 65
 
     # Use the *exact same* dynamic Y offset calculation as draw_keyboard
-    keyboard_offset_y = current_screen_height - (key_height + key_margin) * 3 - 20
+    keyboard_offset_y = current_screen_height - (key_height + key_margin) * 3 - 60
 
     for row_idx, row in enumerate(keyboard_rows):
         # Calculate row width (same as draw_keyboard)
@@ -280,7 +414,8 @@ def get_keyboard_key(pos, current_screen_width, current_screen_height):
             key_width = special_key_width if key in ["ENTER", "DEL"] else key_size_x
             
             # Check if the click position (pos) is within this key's bounds
-            if x <= pos[0] <= x + key_width and y <= pos[1] <= y + key_height:
+            key_rect = pygame.Rect(x, y, key_width, key_height)
+            if key_rect.collidepoint(pos):
                 if key == "DEL":
                     return "DEL" # Return "DEL" for the on-screen button
                 if key == "ENTER":
@@ -313,22 +448,52 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+            
+        # --- NEW ---
+        # Handle auto-reset timer for endless mode
+        elif event.type == RESET_GAME_EVENT:
+            reset_game()
+            
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
                 running = False
             elif event.key == pygame.K_F11:
                 toggle_fullscreen()
+            # Pass key presses to the handler (it will check for game_over)
             elif event.key == pygame.K_BACKSPACE:
                 handle_key_press("BACKSPACE")
             elif event.key == pygame.K_RETURN:
                 handle_key_press("RETURN")
             elif event.unicode.isalpha():
                 handle_key_press(event.unicode.upper())
+                
         elif event.type == pygame.MOUSEBUTTONDOWN:
-            # Pass current dimensions to the click handler
-            key = get_keyboard_key(event.pos, current_screen_width, current_screen_height)
-            if key:
-                handle_key_press(key)
+            # --- MODIFIED ---
+            # 1. Check for Endless Mode toggle first (always active)
+            # We check both the box and the text for easier clicking
+            if endless_toggle_rect.collidepoint(event.pos) or \
+               endless_toggle_text_rect.collidepoint(event.pos):
+                endless_mode = not endless_mode
+                # If we toggle this while buttons are showing, hide them
+                if show_end_game_buttons:
+                    show_end_game_buttons = False
+                    game_over = False # Allow playing again
+                    reset_game() # Or just reset
+                
+            # 2. Check for end-game buttons (only if showing)
+            elif show_end_game_buttons:
+                if continue_button_rect.collidepoint(event.pos):
+                    reset_game()
+                elif exit_button_rect.collidepoint(event.pos):
+                    running = False
+                    
+            # 3. Check for keyboard (only if game is not over)
+            elif not game_over:
+                # Pass current dimensions to the click handler
+                key = get_keyboard_key(event.pos, current_screen_width, current_screen_height)
+                if key:
+                    handle_key_press(key)
+                    
         # Handle window resize event
         elif event.type == pygame.VIDEORESIZE:
             if not fullscreen:
@@ -342,8 +507,13 @@ while running:
     # Pass current dimensions to all drawing functions
     draw_title(current_screen_width)
     draw_grid(current_screen_width)
+    
+    # --- MODIFIED DRAW ORDER ---
     draw_keyboard(current_screen_width, current_screen_height)
-    draw_message(current_screen_width)
+    draw_end_game_buttons(current_screen_width, current_screen_height) # Draw this *after* grid
+    draw_endless_mode_toggle(current_screen_width, current_screen_height) # Draw this last
+    
+    draw_message(current_screen_width) # Draw message on top of all
     
     pygame.display.flip()
     clock.tick(60)
