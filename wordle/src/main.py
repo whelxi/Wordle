@@ -6,6 +6,14 @@ import os
 # Initialize pygame
 pygame.init()
 
+# --- NEW: Initialize Mixer ---
+try:
+    pygame.mixer.init()
+    mixer_initialized = True
+except pygame.error as e:
+    print(f"Warning: Mixer could not be initialized. Sound will be disabled. Error: {e}", file=sys.stderr)
+    mixer_initialized = False
+
 # Constants
 SCREEN_WIDTH, SCREEN_HEIGHT = 500, 750  # Increased height
 GRID_SIZE = 5
@@ -63,6 +71,46 @@ WORD_LIST_FILE = os.path.join(project_root, 'data', 'word_list_5.txt')
 
 # Load the words
 WORDS = load_words(WORD_LIST_FILE)
+
+# --- NEW: Load Keypress Sound ---
+keypress_sound = None
+if mixer_initialized:
+    try:
+        # Assume a sound file 'keypress.wav' or 'keypress.ogg' is in the data folder
+        # Pygame supports WAV and OGG best
+        KEYPRESS_SOUND_FILE = os.path.join(project_root, 'data', 'keypress.mp3')
+        if not os.path.exists(KEYPRESS_SOUND_FILE):
+            # Try .ogg as a fallback
+            KEYPRESS_SOUND_FILE = os.path.join(project_root, 'data', 'keypress.ogg')
+        
+        keypress_sound = pygame.mixer.Sound(KEYPRESS_SOUND_FILE)
+    except pygame.error as e:
+        print(f"Warning: Could not load sound file. Sound will be disabled. Error: {e}", file=sys.stderr)
+        print(f"Please ensure 'keypress.wav' or 'keypress.ogg' is in the '{os.path.join(project_root, 'data')}' directory.", file=sys.stderr)
+    except FileNotFoundError:
+            print(f"Warning: Sound file not found. Sound will be disabled.", file=sys.stderr)
+            print(f"Please ensure 'keypress.wav' or 'keypress.ogg' is in the '{os.path.join(project_root, 'data')}' directory.", file=sys.stderr)
+
+# --- NEW: Load Enter Sound (as requested) ---
+enter_sound = None
+if mixer_initialized:
+    try:
+        ENTER_SOUND_FILE = os.path.join(project_root, 'data', 'keypress2.mp3')
+        if not os.path.exists(ENTER_SOUND_FILE):
+            # Try .wav as a fallback
+            ENTER_SOUND_FILE = os.path.join(project_root, 'data', 'keypress2.wav')
+        if not os.path.exists(ENTER_SOUND_FILE):
+            # Try .ogg as a final fallback
+            ENTER_SOUND_FILE = os.path.join(project_root, 'data', 'keypress2.ogg')
+        
+        enter_sound = pygame.mixer.Sound(ENTER_SOUND_FILE)
+    except pygame.error as e:
+        print(f"Warning: Could not load sound file 'keypress2'. Sound will be disabled. Error: {e}", file=sys.stderr)
+        print(f"Please ensure 'keypress2.mp3', 'keypress2.wav', or 'keypress2.ogg' is in the '{os.path.join(project_root, 'data')}' directory.", file=sys.stderr)
+    except FileNotFoundError:
+            print(f"Warning: Sound file 'keypress2' not found. Sound will be disabled.", file=sys.stderr)
+            print(f"Please ensure 'keypress2.mp3', 'keypress2.wav', or 'keypress2.ogg' is in the '{os.path.join(project_root, 'data')}' directory.", file=sys.stderr)
+
 
 # Set up the display
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.RESIZABLE)
@@ -372,13 +420,22 @@ def handle_key_press(key):
         grid[current_row][current_col] = key
         current_col += 1
         message = ""
+        # --- NEW: Play sound on successful letter press ---
+        if keypress_sound:
+            keypress_sound.play()
     # Check for Backspace (physical) or DEL (on-screen)
     elif (key == "BACKSPACE" or key == "DEL") and current_col > 0:
         current_col -= 1
         grid[current_row][current_col] = ""
         message = ""
+        # --- NEW: Play sound on successful delete ---
+        if keypress_sound:
+            keypress_sound.play()
     # Check for Return (physical) or ENTER (on-screen)
     elif key == "RETURN" or key == "ENTER":
+        # --- NEW: Play Enter sound as requested ---
+        if enter_sound:
+            enter_sound.play()
         check_guess()
 
 def get_keyboard_key(pos, current_screen_width, current_screen_height):
