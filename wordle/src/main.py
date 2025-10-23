@@ -2,6 +2,75 @@ import pygame
 import random
 import sys
 import os
+import urllib.request # <-- NEW IMPORT
+
+# --- NEW: First-Time Setup Logic ---
+
+# Define file paths and URLs
+try:
+    # This is the 'src' directory
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+except NameError:
+    # Fallback for interactive interpreters
+    script_dir = os.path.abspath(os.getcwd())
+
+# This is the project root (WORDLE/)
+project_root = os.path.dirname(script_dir)
+DATA_DIR = os.path.join(project_root, 'data')
+
+# Define the files needed from the GitHub repo
+# Using the specific branch from your request
+BASE_URL = "https://raw.githubusercontent.com/whelxi/Wordle/refs/heads/main/wordle/data/"
+REQUIRED_FILES = {
+    "word_list_5.txt": BASE_URL + "word_list_5.txt",
+    "keypress.mp3": BASE_URL + "keypress.mp3",
+    "keypress2.mp3": BASE_URL + "keypress2.mp3"
+}
+
+def check_and_download_data():
+    """Checks for the data directory and required files, downloads them if missing."""
+    print("--- Checking for required game files... ---")
+    
+    # 1. Check for data directory
+    if not os.path.exists(DATA_DIR):
+        print(f"Data directory not found. Creating '{DATA_DIR}'...")
+        try:
+            os.makedirs(DATA_DIR)
+        except Exception as e:
+            print(f"FATAL: Could not create data directory. Error: {e}", file=sys.stderr)
+            print("Please create the 'data' directory manually in the project root.")
+            sys.exit(1)
+    
+    # 2. Check for each required file
+    all_files_ok = True
+    for filename, url in REQUIRED_FILES.items():
+        local_path = os.path.join(DATA_DIR, filename)
+        if not os.path.exists(local_path):
+            all_files_ok = False
+            print(f"File '{filename}' not found. Downloading from GitHub...")
+            try:
+                # Download the file
+                urllib.request.urlretrieve(url, local_path)
+                print(f"Successfully downloaded '{filename}'.")
+            except urllib.error.URLError as e:
+                print(f"FATAL: Failed to download '{filename}'. Check internet connection. Error: {e}", file=sys.stderr)
+                sys.exit(1)
+            except Exception as e:
+                print(f"FATAL: An unknown error occurred while downloading '{filename}'. Error: {e}", file=sys.stderr)
+                sys.exit(1)
+        else:
+            print(f"File '{filename}' found.")
+    
+    if all_files_ok:
+        print("--- All files are present. ---")
+    else:
+        print("--- File setup complete. ---")
+
+# Run the check before anything else
+check_and_download_data()
+
+# --- END: First-Time Setup Logic ---
+
 
 # Initialize pygame
 pygame.init()
@@ -49,6 +118,7 @@ def load_words(filepath):
             sys.exit(1)
         return words
     except FileNotFoundError:
+        # This will now only trigger if the download failed for some reason
         print(f"Error: Word list file not found at {filepath}", file=sys.stderr)
         print("Please ensure 'word_list_5.txt' is in the 'data' directory.", file=sys.stderr)
         sys.exit(1)
@@ -56,18 +126,9 @@ def load_words(filepath):
         print(f"An error occurred while loading words: {e}", file=sys.stderr)
         sys.exit(1)
 
-# Get the absolute path to the directory containing main.py (src/)
-# __file__ is the path to the current script (main.py)
-try:
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-except NameError:
-    # Handle cases where __file__ is not defined (e.g., interactive interpreter)
-    script_dir = os.path.abspath(os.getcwd())
 
-# Go up one level to the project root (WORDLE/)
-project_root = os.path.dirname(script_dir)
-# Construct the path to the word list
-WORD_LIST_FILE = os.path.join(project_root, 'data', 'word_list_5.txt')
+# --- Path definitions now use the DATA_DIR constant from setup ---
+WORD_LIST_FILE = os.path.join(DATA_DIR, 'word_list_5.txt')
 
 # Load the words
 WORDS = load_words(WORD_LIST_FILE)
@@ -76,40 +137,34 @@ WORDS = load_words(WORD_LIST_FILE)
 keypress_sound = None
 if mixer_initialized:
     try:
-        # Assume a sound file 'keypress.wav' or 'keypress.ogg' is in the data folder
-        # Pygame supports WAV and OGG best
-        KEYPRESS_SOUND_FILE = os.path.join(project_root, 'data', 'keypress.mp3')
+        # Paths now use DATA_DIR
+        KEYPRESS_SOUND_FILE = os.path.join(DATA_DIR, 'keypress.mp3')
         if not os.path.exists(KEYPRESS_SOUND_FILE):
-            # Try .ogg as a fallback
-            KEYPRESS_SOUND_FILE = os.path.join(project_root, 'data', 'keypress.ogg')
+            KEYPRESS_SOUND_FILE = os.path.join(DATA_DIR, 'keypress.ogg') # Fallback
         
         keypress_sound = pygame.mixer.Sound(KEYPRESS_SOUND_FILE)
     except pygame.error as e:
         print(f"Warning: Could not load sound file. Sound will be disabled. Error: {e}", file=sys.stderr)
-        print(f"Please ensure 'keypress.wav' or 'keypress.ogg' is in the '{os.path.join(project_root, 'data')}' directory.", file=sys.stderr)
     except FileNotFoundError:
             print(f"Warning: Sound file not found. Sound will be disabled.", file=sys.stderr)
-            print(f"Please ensure 'keypress.wav' or 'keypress.ogg' is in the '{os.path.join(project_root, 'data')}' directory.", file=sys.stderr)
+
 
 # --- NEW: Load Enter Sound (as requested) ---
 enter_sound = None
 if mixer_initialized:
     try:
-        ENTER_SOUND_FILE = os.path.join(project_root, 'data', 'keypress2.mp3')
+        # Paths now use DATA_DIR
+        ENTER_SOUND_FILE = os.path.join(DATA_DIR, 'keypress2.mp3')
         if not os.path.exists(ENTER_SOUND_FILE):
-            # Try .wav as a fallback
-            ENTER_SOUND_FILE = os.path.join(project_root, 'data', 'keypress2.wav')
+            ENTER_SOUND_FILE = os.path.join(DATA_DIR, 'keypress2.wav') # Fallback
         if not os.path.exists(ENTER_SOUND_FILE):
-            # Try .ogg as a final fallback
-            ENTER_SOUND_FILE = os.path.join(project_root, 'data', 'keypress2.ogg')
+            ENTER_SOUND_FILE = os.path.join(DATA_DIR, 'keypress2.ogg') # Fallback
         
         enter_sound = pygame.mixer.Sound(ENTER_SOUND_FILE)
     except pygame.error as e:
         print(f"Warning: Could not load sound file 'keypress2'. Sound will be disabled. Error: {e}", file=sys.stderr)
-        print(f"Please ensure 'keypress2.mp3', 'keypress2.wav', or 'keypress2.ogg' is in the '{os.path.join(project_root, 'data')}' directory.", file=sys.stderr)
     except FileNotFoundError:
             print(f"Warning: Sound file 'keypress2' not found. Sound will be disabled.", file=sys.stderr)
-            print(f"Please ensure 'keypress2.mp3', 'keypress2.wav', or 'keypress2.ogg' is in the '{os.path.join(project_root, 'data')}' directory.", file=sys.stderr)
 
 
 # Set up the display
@@ -575,7 +630,7 @@ while running:
                 # If we toggle this while buttons are showing, hide them
                 if show_end_game_buttons:
                     show_end_game_buttons = False
-                    game_over = False # Allow playing again
+                    game_over = False # Allow playing
                     reset_game() # Or just reset
                 
             # 2. Check for end-game buttons (only if showing)
