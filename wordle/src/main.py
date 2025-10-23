@@ -1,19 +1,20 @@
 import pygame
 import random
 import sys
+import os
 
 # Initialize pygame
 pygame.init()
 
 # Constants
-SCREEN_WIDTH, SCREEN_HEIGHT = 500, 700
+SCREEN_WIDTH, SCREEN_HEIGHT = 500, 750  # Increased height
 GRID_SIZE = 5
 GRID_ROWS = 6
 CELL_SIZE = 60
 CELL_MARGIN = 10
-GRID_OFFSET_X = (SCREEN_WIDTH - (CELL_SIZE + CELL_MARGIN) * GRID_SIZE) // 2
-GRID_OFFSET_Y = 80
-KEYBOARD_OFFSET_Y = 520
+# GRID_OFFSET_X removed - will be calculated dynamically
+GRID_OFFSET_Y = 110 # Pushed grid down
+# KEYBOARD_OFFSET_Y removed - will be calculated dynamically
 
 # Colors
 WHITE = (255, 255, 255)
@@ -25,76 +26,46 @@ YELLOW = (201, 180, 88)
 DARK_GRAY = (58, 58, 60)
 
 # Word list (simplified for this example)
-WORDS = [
-    'ABOUT', 'ABOVE', 'ABUSE', 'ACTOR', 'ACUTE', 'ADMIT', 'ADOPT', 'ADULT',
-    'AFTER', 'AGAIN', 'AGENT', 'AGREE', 'AHEAD', 'ALARM', 'ALBUM', 'ALERT',
-    'ALIKE', 'ALIVE', 'ALLOW', 'ALONE', 'ALONG', 'ALTER', 'AMONG', 'ANGER',
-    'ANGLE', 'ANGRY', 'APART', 'APPLE', 'APPLY', 'ARENA', 'ARGUE', 'ARISE',
-    'ARRAY', 'ASIDE', 'ASSET', 'AUDIO', 'AUDIT', 'AVOID', 'AWARD', 'AWARE',
-    'AWFUL', 'BADLY', 'BAKER', 'BASES', 'BASIC', 'BASIS', 'BEACH', 'BEGAN',
-    'BEGIN', 'BEGUN', 'BEING', 'BELOW', 'BENCH', 'BIRTH', 'BLACK', 'BLAME',
-    'BLIND', 'BLOCK', 'BLOOD', 'BOARD', 'BOOST', 'BOOTH', 'BOUND', 'BRAIN',
-    'BRAND', 'BREAD', 'BREAK', 'BREED', 'BRIEF', 'BRING', 'BROAD', 'BROKE',
-    'BROWN', 'BUILD', 'BUILT', 'BURST', 'BUYER', 'CABLE', 'CARRY', 'CATCH',
-    'CAUSE', 'CHAIN', 'CHAIR', 'CHART', 'CHASE', 'CHEAP', 'CHECK', 'CHEST',
-    'CHIEF', 'CHILD', 'CHINA', 'CHOSE', 'CIVIL', 'CLAIM', 'CLASS', 'CLEAN',
-    'CLEAR', 'CLICK', 'CLOCK', 'CLOSE', 'CLOWN', 'COACH', 'COAST', 'COULD',
-    'COUNT', 'COURT', 'COVER', 'CRAFT', 'CRASH', 'CREAM', 'CRIME', 'CROSS',
-    'CROWD', 'CROWN', 'CRUEL', 'CURVE', 'CYCLE', 'DAILY', 'DANCE', 'DATED',
-    'DEALT', 'DEATH', 'DEBUT', 'DELAY', 'DEPTH', 'DIRTY', 'DOING', 'DOUBT',
-    'DOZEN', 'DRAFT', 'DRAMA', 'DRAWN', 'DREAM', 'DRESS', 'DRILL', 'DRINK',
-    'DRIVE', 'DROVE', 'DYING', 'EAGER', 'EARLY', 'EARTH', 'EIGHT', 'ELITE',
-    'EMPTY', 'ENEMY', 'ENJOY', 'ENTER', 'ENTRY', 'EQUAL', 'ERROR', 'ESSAY',
-    'EVENT', 'EVERY', 'EXACT', 'EXIST', 'EXTRA', 'FAITH', 'FALSE', 'FAULT',
-    'FAVOR', 'FEAST', 'FIBER', 'FIELD', 'FIFTH', 'FIFTY', 'FIGHT', 'FINAL',
-    'FIRST', 'FIXED', 'FLAME', 'FLASH', 'FLEET', 'FLOOR', 'FLUID', 'FOCUS',
-    'FORCE', 'FORTH', 'FORTY', 'FORUM', 'FOUND', 'FRAME', 'FRANK', 'FRAUD',
-    'FRESH', 'FRONT', 'FRUIT', 'FULLY', 'FUNNY', 'GIANT', 'GIVEN', 'GLASS',
-    'GLOBE', 'GOING', 'GRACE', 'GRADE', 'GRAIN', 'GRAND', 'GRANT', 'GRASS',
-    'GRAVE', 'GREAT', 'GREEN', 'GROSS', 'GROUP', 'GROWN', 'GUARD', 'GUESS',
-    'GUEST', 'GUIDE', 'HABIT', 'HAPPY', 'HARRY', 'HEART', 'HEAVY', 'HENCE',
-    'HONEY', 'HORSE', 'HOTEL', 'HOUSE', 'HUMAN', 'IDEAL', 'IMAGE', 'INDEX',
-    'INNER', 'INPUT', 'ISSUE', 'JOINT', 'JUDGE', 'JUICE', 'KNOWN', 'LABEL',
-    'LARGE', 'LASER', 'LATER', 'LAUGH', 'LAYER', 'LEARN', 'LEASE', 'LEAST',
-    'LEAVE', 'LEGAL', 'LEVEL', 'LIGHT', 'LIMIT', 'LINKS', 'LOCAL', 'LOGIC',
-    'LOOSE', 'LOWER', 'LUCKY', 'LUNCH', 'LYING', 'MAGIC', 'MAJOR', 'MAKER',
-    'MARCH', 'MATCH', 'MAYBE', 'MAYOR', 'MEANT', 'MEDIA', 'METAL', 'MIGHT',
-    'MINOR', 'MINUS', 'MIXED', 'MODEL', 'MOIST', 'MONEY', 'MONTH', 'MORAL',
-    'MOTOR', 'MOUNT', 'MOUSE', 'MOUTH', 'MOVIE', 'MUSIC', 'NEEDS', 'NEVER',
-    'NEWLY', 'NIGHT', 'NOISE', 'NORTH', 'NOTED', 'NOVEL', 'NURSE', 'OCCUR',
-    'OCEAN', 'OFFER', 'OFTEN', 'ONSET', 'OPERA', 'ORDER', 'OTHER', 'OUGHT',
-    'OWNER', 'PAINT', 'PANEL', 'PAPER', 'PARTY', 'PEACE', 'PENNY', 'PHASE',
-    'PHONE', 'PHOTO', 'PIECE', 'PILOT', 'PITCH', 'PLACE', 'PLAIN', 'PLANE',
-    'PLANT', 'PLATE', 'POINT', 'POUND', 'POWER', 'PRESS', 'PRICE', 'PRIDE',
-    'PRIME', 'PRINT', 'PRIOR', 'PRIZE', 'PROOF', 'PROUD', 'PROVE', 'QUEEN',
-    'QUEST', 'QUICK', 'QUIET', 'QUITE', 'RADIO', 'RAISE', 'RANGE', 'RAPID',
-    'RATIO', 'REACH', 'REACT', 'READY', 'REFER', 'RIGHT', 'RIVAL', 'RIVER',
-    'ROCKY', 'ROMAN', 'ROUGH', 'ROUND', 'ROUTE', 'ROYAL', 'RURAL', 'SCALE',
-    'SCENE', 'SCOPE', 'SCORE', 'SENSE', 'SERVE', 'SEVEN', 'SHALL', 'SHAME',
-    'SHAPE', 'SHARE', 'SHARP', 'SHEET', 'SHELF', 'SHELL', 'SHIFT', 'SHINE',
-    'SHINY', 'SHIRT', 'SHOCK', 'SHOOT', 'SHOPS', 'SHORT', 'SHOUT', 'SHOWN',
-    'SIGHT', 'SILLY', 'SINCE', 'SIXTH', 'SIXTY', 'SIZED', 'SKILL', 'SKIRT',
-    'SLEEP', 'SLIDE', 'SLOPE', 'SMALL', 'SMART', 'SMILE', 'SMOKE', 'SNAKE',
-    'SOLAR', 'SOLID', 'SOLVE', 'SORRY', 'SOUND', 'SOUTH', 'SPACE', 'SPARE',
-    'SPEAK', 'SPEED', 'SPEND', 'SPENT', 'SPLIT', 'SPOKE', 'SPORT', 'SPOTS',
-    'STAFF', 'STAGE', 'STAKE', 'STAND', 'START', 'STATE', 'STEAM', 'STEEL',
-    'STEEP', 'STICK', 'STILL', 'STOCK', 'STONE', 'STOOD', 'STORE', 'STORM',
-    'STORY', 'STRAW', 'STRIP', 'STUCK', 'STUDY', 'STUFF', 'STYLE', 'SUGAR',
-    'SUITE', 'SUNNY', 'SUPER', 'SWEET', 'TABLE', 'TAKEN', 'TASTE', 'TAXES',
-    'TEACH', 'TEAMS', 'TEETH', 'TENSE', 'TENTH', 'TEXAS', 'THANK', 'THEFT',
-    'THEIR', 'THEME', 'THERE', 'THESE', 'THICK', 'THIEF', 'THING', 'THINK',
-    'THIRD', 'THOSE', 'THREE', 'THREW', 'THROW', 'THUMB', 'TIGHT', 'TIMER',
-    'TIMES', 'TIRED', 'TITLE', 'TODAY', 'TOKEN', 'TOPIC', 'TOTAL', 'TOUCH',
-    'TOUGH', 'TOWER', 'TOXIC', 'TRACK', 'TRADE', 'TRAIL', 'TRAIN', 'TREAT',
-    'TREND', 'TRIAL', 'TRIBE', 'TRICK', 'TRIED', 'TRIES', 'TRUCK', 'TRULY',
-    'TRUST', 'TRUTH', 'TWICE', 'TWIST', 'UNCLE', 'UNDER', 'UNDUE', 'UNION',
-    'UNITY', 'UNTIL', 'UPPER', 'UPSET', 'URBAN', 'USAGE', 'USUAL', 'VALID',
-    'VALUE', 'VIDEO', 'VIRUS', 'VISIT', 'VITAL', 'VOICE', 'WASTE', 'WATCH',
-    'WATER', 'WEARY', 'WEIGH', 'WHEEL', 'WHERE', 'WHICH', 'WHILE', 'WHITE',
-    'WHOLE', 'WHOSE', 'WIDER', 'WOMAN', 'WORLD', 'WORRY', 'WORSE', 'WORST',
-    'WORTH', 'WOULD', 'WOUND', 'WRITE', 'WRONG', 'WROTE', 'YIELD', 'YOUNG',
-    'YOUTH'
-]
+# --- Load word list from file ---
+def load_words(filepath):
+    """Loads and processes the word list from a file."""
+    try:
+        with open(filepath, 'r') as f:
+            # Read all lines, strip whitespace, and convert to uppercase
+            # Filter for 5-letter words and ensure they are alphabetic
+            words = [
+                line.strip().upper() 
+                for line in f 
+                if len(line.strip()) == 5 and line.strip().isalpha()
+            ]
+        if not words:
+            # If no valid words are found, print an error and exit
+            print(f"Error: No valid 5-letter words found in {filepath}", file=sys.stderr)
+            sys.exit(1)
+        return words
+    except FileNotFoundError:
+        print(f"Error: Word list file not found at {filepath}", file=sys.stderr)
+        print("Please ensure 'word_list_5.txt' is in the 'data' directory.", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f"An error occurred while loading words: {e}", file=sys.stderr)
+        sys.exit(1)
+
+# Get the absolute path to the directory containing main.py (src/)
+# __file__ is the path to the current script (main.py)
+try:
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+except NameError:
+    # Handle cases where __file__ is not defined (e.g., interactive interpreter)
+    script_dir = os.path.abspath(os.getcwd())
+
+# Go up one level to the project root (WORDLE/)
+project_root = os.path.dirname(script_dir)
+# Construct the path to the word list
+WORD_LIST_FILE = os.path.join(project_root, 'data', 'word_list_5.txt')
+
+# Load the words
+WORDS = load_words(WORD_LIST_FILE)
 
 # Set up the display
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.RESIZABLE)
@@ -120,10 +91,16 @@ keyboard_rows = [
     ['ENTER', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', 'DEL']
 ]
 
-def draw_grid():
+# --- MODIFIED FUNCTION ---
+def draw_grid(current_screen_width):
+    # Calculate the dynamic horizontal offset to center the grid
+    grid_total_width = (CELL_SIZE + CELL_MARGIN) * GRID_SIZE - CELL_MARGIN
+    grid_offset_x = (current_screen_width - grid_total_width) // 2
+    
     for row in range(GRID_ROWS):
         for col in range(GRID_SIZE):
-            x = GRID_OFFSET_X + col * (CELL_SIZE + CELL_MARGIN)
+            # Use the dynamically calculated offset
+            x = grid_offset_x + col * (CELL_SIZE + CELL_MARGIN)
             y = GRID_OFFSET_Y + row * (CELL_SIZE + CELL_MARGIN)
             
             # Draw cell background
@@ -138,12 +115,16 @@ def draw_grid():
                 text_rect = text.get_rect(center=(x + CELL_SIZE // 2, y + CELL_SIZE // 2))
                 screen.blit(text, text_rect)
 
-def draw_keyboard():
+# --- MODIFIED FUNCTION ---
+def draw_keyboard(current_screen_width, current_screen_height):
     # Define sizes specifically for the keyboard
     key_height = 50
     key_margin = 6
-    key_size_x = 40       # Width for regular keys
+    key_size_x = 40      # Width for regular keys
     special_key_width = 65 # Width for ENTER and DEL
+
+    # Calculate dynamic Y offset to position keyboard near the bottom
+    keyboard_offset_y = current_screen_height - (key_height + key_margin) * 3 - 20 # 20px padding from bottom
 
     for row_idx, row in enumerate(keyboard_rows):
         # Calculate the total width of the current row
@@ -156,9 +137,9 @@ def draw_keyboard():
             if key_idx < len(row) - 1:
                 row_width += key_margin
         
-        # Calculate starting x to center the row
-        x = (SCREEN_WIDTH - row_width) // 2
-        y = KEYBOARD_OFFSET_Y + row_idx * (key_height + key_margin)
+        # Calculate starting x to center the row (using current width)
+        x = (current_screen_width - row_width) // 2
+        y = keyboard_offset_y + row_idx * (key_height + key_margin)
         
         for key in row:
             # Determine key width
@@ -182,16 +163,20 @@ def draw_keyboard():
             # Move x for the next key in the row
             x += key_width + key_margin
 
-def draw_message():
+# --- MODIFIED FUNCTION ---
+def draw_message(current_screen_width):
     if message:
         text = small_font.render(message, True, BLACK)
-        text_rect = text.get_rect(center=(SCREEN_WIDTH // 2, GRID_OFFSET_Y - 30))
+        # Center message horizontally, place it at a fixed position below the title
+        text_rect = text.get_rect(center=(current_screen_width // 2, 80)) # Changed Y position
         screen.blit(text, text_rect)
 
-def draw_title():
+# --- MODIFIED FUNCTION ---
+def draw_title(current_screen_width):
     title_font = pygame.font.SysFont('Arial', 40, bold=True)
     title = title_font.render("WORDLE", True, BLACK)
-    title_rect = title.get_rect(center=(SCREEN_WIDTH // 2, 40))
+    # Center title horizontally, place it at the top
+    title_rect = title.get_rect(center=(current_screen_width // 2, 40))
     screen.blit(title, title_rect)
 
 def check_guess():
@@ -266,15 +251,18 @@ def handle_key_press(key):
     elif key == "RETURN" or key == "ENTER":
         check_guess()
 
-def get_keyboard_key(pos):
+def get_keyboard_key(pos, current_screen_width, current_screen_height):
     # Use the same dimensions as in draw_keyboard
     key_height = 50
     key_margin = 6
     key_size_x = 40
     special_key_width = 65
 
+    # Use the *exact same* dynamic Y offset calculation as draw_keyboard
+    keyboard_offset_y = current_screen_height - (key_height + key_margin) * 3 - 20
+
     for row_idx, row in enumerate(keyboard_rows):
-        # Calculate row width
+        # Calculate row width (same as draw_keyboard)
         row_width = 0
         for key_idx, key in enumerate(row):
             if key in ["ENTER", "DEL"]:
@@ -284,9 +272,9 @@ def get_keyboard_key(pos):
             if key_idx < len(row) - 1:
                 row_width += key_margin
         
-        # Calculate starting x and y
-        x = (SCREEN_WIDTH - row_width) // 2
-        y = KEYBOARD_OFFSET_Y + row_idx * (key_height + key_margin)
+        # Calculate starting x and y (same as draw_keyboard)
+        x = (current_screen_width - row_width) // 2
+        y = keyboard_offset_y + row_idx * (key_height + key_margin)
         
         for key in row:
             key_width = special_key_width if key in ["ENTER", "DEL"] else key_size_x
@@ -310,6 +298,7 @@ def toggle_fullscreen():
     if fullscreen:
         screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
     else:
+        # Return to the default windowed size
         screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.RESIZABLE)
 
 # Main game loop
@@ -317,6 +306,10 @@ clock = pygame.time.Clock()
 running = True
 
 while running:
+    # Get current screen dimensions at the start of each frame
+    current_screen_width = screen.get_width()
+    current_screen_height = screen.get_height()
+
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
@@ -332,16 +325,25 @@ while running:
             elif event.unicode.isalpha():
                 handle_key_press(event.unicode.upper())
         elif event.type == pygame.MOUSEBUTTONDOWN:
-            key = get_keyboard_key(event.pos)
+            # Pass current dimensions to the click handler
+            key = get_keyboard_key(event.pos, current_screen_width, current_screen_height)
             if key:
                 handle_key_press(key)
+        # Handle window resize event
+        elif event.type == pygame.VIDEORESIZE:
+            if not fullscreen:
+                # Update the screen surface to the new size
+                screen = pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
+
     
     # Draw everything
     screen.fill(WHITE)
-    draw_title()
-    draw_grid()
-    draw_keyboard()
-    draw_message()
+    
+    # Pass current dimensions to all drawing functions
+    draw_title(current_screen_width)
+    draw_grid(current_screen_width)
+    draw_keyboard(current_screen_width, current_screen_height)
+    draw_message(current_screen_width)
     
     pygame.display.flip()
     clock.tick(60)
